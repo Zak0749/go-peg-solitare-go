@@ -12,54 +12,52 @@ import (
 
 func main() {
 	start()
-	// board := startingboard.Startingboard
+}
 
-	// board[2][2] = 1
-
-	// printboard.PrintBoard(board)
-
-	// ro90 := comparitors.Rotate90(board)
-	// ro180 := comparitors.Rotate90(ro90)
-	// ro270 := comparitors.Rotate90(ro180)
-
-	// printboard.PrintBoard(ro90)
-	// printboard.PrintBoard(ro180)
-	// printboard.PrintBoard(ro270)
+func fileboard(board [7][7]byte) string {
+	str := ""
+	for y := range board {
+		for _, val := range board[y] {
+			str += fmt.Sprint(val)
+		}
+	}
+	str += ","
+	return str
 }
 
 func start() {
-	data := [][][7][7]byte{}
 	main := make(chan [][7][7]byte, 31)
 	now := time.Now()
-	total := time.Now()
 
 	go computeLayer([][7][7]byte{startingboard.Startingboard}, main)
 
-	for cur := range main {
-		fmt.Println(len(data)+1, "layers computed items:", len(cur), "time", time.Since(now))
+	for i := 0; i < 31; i++ {
+		cur := <-main
 		now = time.Now()
-		data = append(data, cur)
 
-		if len(data) == 31 {
-			close(main)
+		str := ""
+
+		for _, board := range cur {
+			str += fmt.Sprint(board) + ","
 		}
+
+		str += ";"
+
+		file, _ := json.Marshal(cur)
+		os.WriteFile("data/"+fmt.Sprint(i)+".json", file, 0644)
+
+		fmt.Println(i+1, "layers computed items:", len(cur), "time", time.Since(now))
 	}
 
-	fmt.Println("done", len(data)+1, "layers computed, time taken:", time.Since(total))
-
-	file, err := json.MarshalIndent(data, "", " ")
-
-	fmt.Println(err)
-
-	fmt.Println(file)
-
-	os.WriteFile("data.json", file, 0644)
+	close(main)
 }
 
 func computeLayer(boards [][7][7]byte, main chan<- [][7][7]byte) {
 	jobs := make(chan [7][7]byte, len(boards))
 	results := make(chan [][7][7]byte, len(boards))
 
+	go worker(jobs, results)
+	go worker(jobs, results)
 	go worker(jobs, results)
 	go worker(jobs, results)
 	go worker(jobs, results)
